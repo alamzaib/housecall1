@@ -12,3 +12,13 @@ export type PageProps<
         user: User;
     };
 };
+
+export type PageProps<T extends Record<string, unknown> = Record<string, unknown>> = T & {
+    auth: {
+        user: User;
+    };
+    flash: {
+        success?: string;
+    };
+    ziggy: Config & { location: string };
+};
