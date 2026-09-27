@@ -133,3 +133,28 @@ it('prevents unauthenticated users from managing tasks', function () {
     $this->delete("/tasks/{$task->id}")->assertRedirect('/login');
     $this->patch("/tasks/{$task->id}/status", ['status' => 'todo'])->assertRedirect('/login');
 });
+
+it('prevents a user from viewing another users task edit page', function () {
+    $owner = User::factory()->create();
+    $intruder = User::factory()->create();
+    $project = Project::factory()->create(['user_id' => $owner->id]);
+    $task = Task::factory()->create(['project_id' => $project->id]);
+
+    $response = $this->actingAs($intruder)->get("/tasks/{$task->id}/edit");
+
+    $response->assertForbidden();
+});
+
+it('rejects a non-string task description', function () {
+    $user = User::factory()->create();
+    $project = Project::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->post("/projects/{$project->id}/tasks", [
+        'title' => 'Valid Title',
+        'description' => ['not', 'a', 'string'],
+        'status' => 'todo',
+        'priority' => 'low',
+    ]);
+
+    $response->assertSessionHasErrors('description');
+});

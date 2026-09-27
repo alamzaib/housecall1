@@ -98,3 +98,24 @@ it('rejects invalid project data', function () {
     $response->assertSessionHasErrors('name');
     $this->assertDatabaseCount('projects', 0);
 });
+
+it('prevents a user from viewing another users project', function () {
+    $owner = User::factory()->create();
+    $intruder = User::factory()->create();
+    $project = Project::factory()->create(['user_id' => $owner->id]);
+
+    $response = $this->actingAs($intruder)->get("/projects/{$project->id}");
+
+    $response->assertForbidden();
+});
+
+it('rejects a non-string project description', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post('/projects', [
+        'name' => 'Valid Name',
+        'description' => ['not', 'a', 'string'],
+    ]);
+
+    $response->assertSessionHasErrors('description');
+});
