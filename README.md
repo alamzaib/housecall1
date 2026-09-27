@@ -1,59 +1,133 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Task Management System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Overview
 
-## About Laravel
+A full-stack task management system built as a take-home interview project. Authenticated users can create Projects, manage Tasks within those Projects, track task status and priority, and view a Dashboard summarizing their work. The application follows a strict layered architecture with SOLID principles applied throughout, server-side authorization on every mutation, and an automated Pest test suite covering the full behavioral surface.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Features
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Authentication (registration, login, logout, guarded application area)
+- Projects (create, view, update, delete — scoped to the authenticated user)
+- Tasks (create, view, update, delete — nested within a Project)
+- Task status (`todo`, `in_progress`, `completed`) with a dedicated status-change endpoint
+- Task priority (`low`, `medium`, `high`)
+- Dashboard (project/task statistics and a task-status distribution visualization)
+- Authorization (policy-based ownership checks on every Project/Task action)
+- Tests (50 Pest feature tests, 179 assertions)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Tech Stack
 
-## Learning Laravel
+- Laravel 12
+- PHP 8.2
+- MySQL
+- React 18
+- TypeScript
+- Inertia.js 2
+- Pest 3
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Installation
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+# Install PHP dependencies
+composer install
 
-## Laravel Sponsors
+# Install JS dependencies
+npm install
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+# Copy and configure environment
+cp .env.example .env
+php artisan key:generate
+```
 
-### Premium Partners
+Set the following in `.env` (MySQL, not SQLite):
+EOD
+EOF
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Create the database in MySQL/phpMyAdmin, then:
 
-## Contributing
+```bash
+php artisan migrate
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Run the app (two terminals):
 
-## Code of Conduct
+```bash
+php artisan serve
+npm run dev
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Visit `http://127.0.0.1:8000`.
 
-## Security Vulnerabilities
+## Architecture
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Every write and read for Projects and Tasks flows through the same layered chain:
+Each layer has exactly one reason to change: a new field goes through the Form Request and DTO; a new business rule goes in the Service; a new query goes in the Repository; a new access rule goes in the Policy. Controllers stay thin — they orchestrate, they never validate, authorize inline, or query the database directly.
 
-## License
+## SOLID Principles
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- **SRP** — Each class has one reason to change. Form Requests validate, Policies authorize, Services hold business rules, Repositories persist. None of these responsibilities overlap.
+- **OCP** — New task/project behavior is added by extending the Service layer, not by modifying Controllers or Repositories. The Repository contract stays stable as business logic evolves.
+- **LSP** — Both repository implementations (`ProjectRepository`, `TaskRepository`) are fully substitutable for their interfaces; nothing outside the Repository depends on implementation-specific behavior.
+- **ISP** — `ProjectRepositoryInterface` and `TaskRepositoryInterface` are narrow and specific to their entity — no fat, shared interface forcing either implementation to support methods it doesn't need.
+- **DIP** — Services depend on `ProjectRepositoryInterface`/`TaskRepositoryInterface`, never on the concrete Eloquent-backed classes. The Laravel service container wires the concrete implementation in at runtime via a single binding in `AppServiceProvider`.
+
+## Other Principles
+
+- **DRY** — Shared UI (`ProjectForm`, `TaskForm`, badges) and shared Form Request rule shapes avoid duplicating logic across Create/Update paths.
+- **KISS** — Status/priority stored as plain string columns with PHP enum casting, rather than native SQL `ENUM` types or a separate lookup table. Dashboard visualization is CSS bars, not a charting library.
+- **YAGNI** — No pagination, no caching, no generic base Repository/DTO, no Service interfaces — none of these were added speculatively; they're deferred until an actual requirement demands them.
+- **Separation of Concerns** — HTTP, validation, authorization, business logic, and persistence are each isolated in their own layer (see Architecture above).
+- **Dependency Injection** — Every Service and Controller receives its dependencies via constructor injection; nothing is manually instantiated with `new`.
+- **Strong typing** — PHP: DTOs are `final readonly` classes with typed properties, enums are backed and used everywhere instead of raw strings. TypeScript: every component has an explicit prop interface, no `any` anywhere in the codebase.
+
+## Design Decisions
+
+**Why Service Layer?** Separates business/application logic from both HTTP concerns (Controller) and persistence (Repository), so business rules can be tested and reused independently of how a request arrives or how data is stored.
+
+**Why DTO?** Decouples the Service layer from `Illuminate\Http\Request`. A Service that only knows about `ProjectData`/`TaskData` can be called from a controller, a console command, or a test without any HTTP scaffolding.
+
+**Why Repository?** Inverts the dependency between business logic and Eloquent. The Service depends on an interface, not a concrete ORM call — persistence could change without touching business rules.
+
+**Why Policies?** Centralizes every ownership check (`user_id`, or `task.project.user_id` for the nested case) in one canonical place per model, enforced server-side on every relevant action — never trusted to the frontend.
+
+**Why PHP Enums?** `TaskStatus`/`TaskPriority` make invalid values structurally impossible once inside the domain layer, are validated automatically via Laravel's `Enum` validation rule, and keep a single source of truth for valid values instead of scattered string literals.
+
+**Why Inertia?** Gives a full React/TypeScript SPA experience while keeping routing, validation, and authorization entirely server-side in Laravel — no separate API layer, no duplicated validation logic between backend and frontend.
+
+**Why MySQL?** Specified as a hard requirement for this assessment; also the natural fit for XAMPP's local development environment.
+
+## Deliberately Not Used
+
+- **CQRS** — Read and write paths are simple enough that separating them would add indirection without any corresponding benefit at this scale (YAGNI).
+- **Event Sourcing** — No requirement for audit trails or state reconstruction from an event log; a standard CRUD data model is simpler and sufficient (KISS).
+- **Microservices** — A single Laravel monolith is the appropriate scope for two related entities (Project, Task) behind one authentication boundary.
+- **Redux/Zustand/React Query** — Inertia's own page-props model and `useForm` already provide all the state management this app needs; a global store would be unused complexity (YAGNI).
+- **Unnecessary background jobs** — Every operation (create/update/delete/status-change) completes fast enough to run synchronously; queuing would add operational complexity with no user-facing benefit.
+- **Unnecessary caching** — Dashboard statistics run two lightweight, indexed queries regardless of data volume; caching them now would be optimizing before there's any evidence of a performance problem (YAGNI).
+
+## Testing
+
+Run the full Pest feature test suite:
+
+```bash
+php artisan test
+```
+
+Run a specific suite:
+
+```bash
+php artisan test --filter=ProjectTest
+php artisan test --filter=TaskTest
+php artisan test --filter=DashboardTest
+```
+
+50 tests / 179 assertions cover: full CRUD for Projects and Tasks, task status changes, cross-user authorization (IDOR protection) on view/update/delete, validation of required fields and enum values, dashboard statistic accuracy and per-user data isolation, and unauthenticated access rejection across every protected route.
+
+## Security
+
+- **Authentication** — Laravel Breeze (registration, login, logout, email verification) guards every application route via the `auth` middleware.
+- **Authorization** — Every Project/Task view, update, and delete action is checked against a Policy (`ProjectPolicy`, `TaskPolicy`) comparing the authenticated user's ID against the resource's owner — for Tasks, resolved through the parent Project's `user_id`.
+- **Server-side validation** — All input is validated exclusively in Form Request classes (`StoreProjectRequest`, `UpdateTaskRequest`, etc.); the frontend never re-implements or duplicates these rules — it only displays whatever the server rejects.
+- **Ownership checks** — Enforced identically whether an action originates from the UI or a raw HTTP request (curl/Postman); frontend button visibility is never relied upon for security.
+- **CSRF** — Enforced by Laravel's default `VerifyCsrfToken` middleware; Inertia's `axios` client attaches the token automatically on every request.
+- **Mass assignment protection** — Every Eloquent model declares an explicit `$fillable` allow-list; DTOs only ever emit the exact fields that allow-list expects.
