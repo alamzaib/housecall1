@@ -19,3 +19,16 @@ export interface Project {
     created_at: string;
     updated_at: string;
 }
+
+export interface Task {
+    id: number;
+    project_id: number;
+    title: string;
+    description: string | null;
+    status: 'todo' | 'in_progress' | 'completed';
+    priority: 'low' | 'medium' | 'high';
+    created_at: string;
+    updated_at: string;
+}
+export type TaskStatus = Task['status'];
+export type TaskPriority = Task['priority'];

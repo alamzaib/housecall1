@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PrimaryButton from '@/Components/PrimaryButton';
 import DangerButton from '@/Components/DangerButton';
+import TaskCard from '@/Components/Tasks/TaskCard';
 import { Project } from '@/types/project';
 
 interface ShowProps {
@@ -40,18 +41,19 @@ export default function Show({ project }: ShowProps) {
                         </div>
 
                         <div className="mt-8 border-t border-gray-200 pt-6">
-                            <h4 className="mb-4 text-sm font-medium uppercase text-gray-500">
-                                Tasks ({project.tasks?.length ?? 0})
-                            </h4>
+                            <div className="mb-4 flex items-center justify-between">
+                                <h4 className="text-sm font-medium uppercase text-gray-500">
+                                    Tasks ({project.tasks?.length ?? 0})
+                                </h4>
+                                <Link href={route('tasks.create', project.id)}>
+                                    <PrimaryButton>New Task</PrimaryButton>
+                                </Link>
+                            </div>
+
                             {project.tasks && project.tasks.length > 0 ? (
                                 <ul className="divide-y divide-gray-200">
                                     {project.tasks.map((task) => (
-                                        <li key={task.id} className="flex items-center justify-between py-3">
-                                            <span className="text-gray-800">{task.title}</span>
-                                            <span className="text-xs uppercase text-gray-500">
-                                                {task.status.replace('_', ' ')} · {task.priority}
-                                            </span>
-                                        </li>
+                                        <TaskCard key={task.id} task={task} />
                                     ))}
                                 </ul>
                             ) : (
